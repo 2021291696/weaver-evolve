@@ -19,20 +19,43 @@ neat-freak 负责**单个项目内部**的知识卫生（项目 CLAUDE.md + docs
 
 ## 执行流程
 
-### 第零步：定位增量范围
+### 第零步：定位增量范围（双源）
 
-1. 读取时间戳文件 `~/.claude/.last-weaver`。如果文件不存在，这是首次运行。
-2. **首次运行**：告诉用户这是首次全局整理，需要指定回溯范围。给出选项：
-   - "最近一周" → 过去 7 天
-   - "最近一月" → 过去 30 天
-   - "全部" → 扫描所有可用 sessions
-   等待用户选择后再继续。
-3. 列出 `~/.claude/sessions/` 中的所有 session 文件，按修改时间排序。
-4. 筛选出修改时间晚于 `.last-weaver` 中时间戳的 session。
-5. **增量为空**：报告"自上次整理以来没有新对话，无需整理。" 并退出。
-6. **有增量**：报告增量 session 数量（如"发现 12 个新 session 自 2026-05-10 以来"），继续第一步。
+1. 读取时间戳文件 `~/.claude/.last-weaver`。格式：ISO 8601（如 `2026-05-17T14:30:00+08:00`）。
+   不存在 → 首次运行，询问用户回溯范围（一周 / 一月 / 全部），等待选择后继续。
 
-> 时间戳文件格式：纯文本，ISO 8601 时间（如 `2026-05-17T14:30:00+08:00`）。每次整理完成后更新。
+2. **启动 agentmemory（尝试）：**
+   ```bash
+   curl -s --max-time 2 http://localhost:3111/health || \
+     timeout 10 bash ~/.claude/helpers/daemon-manager.sh start || true
+   ```
+   最终状态用 `curl -s http://localhost:3111/health` 确认：
+   - 200 → MCP 在线
+   - 其他 → 离线，进入降级模式
+
+3. **Source 1: agentmemory MCP（主源，需在线）：**
+   - 调用 `memory_sessions` 获取所有 session，按 `updatedAt`（毫秒时间戳）筛选
+   - `updatedAt` 为 null 时 fallback `startedAt`
+   - 筛选条件：`updatedAt > .last-weaver`
+   - 增量 sessions 按 `updatedAt` 降序排列
+
+4. **Source 2: history.jsonl（兜底源，始终可用）：**
+   - 读取 `~/.claude/history.jsonl`
+   - 按 `timestamp` 字段筛选增量期内的行
+   - 按 `project` 字段分组统计：每项目消息数 → 活跃项目排名
+   - 提取高频 `display` 模式（重复出现的命令/skill 调用）
+
+5. **合并两源：**
+   - agentmemory 的 sessionId 标注 `[MCP]`，history.jsonl 的标注 `[本地]`
+   - **两者不强制合并**——各自独立进入第一步
+   - 更新 `~/.claude/.last-weaver` 为本次扫描中最新的 `updatedAt`
+
+6. **降级模式（agentmemory 离线时）：**
+   - 跳过 Source 1，仅使用 Source 2
+   - 第一步中跳过需要完整转录的操作（经验模式识别、趋势追踪、权限弹窗扫描）
+   - 在第五步摘要首行标注：`⚠️ agentmemory 离线，仅基于命令历史（history.jsonl）。启动 daemon 后重新整理可获得完整分析。`
+
+7. **增量为空：** 报告"自上次整理以来没有新对话，无需整理。" 并退出。
 
 ### 第一步：扫描增量 Sessions，提取信息
 
