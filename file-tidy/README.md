@@ -1,6 +1,9 @@
-# file-tidy v2
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](../../LICENSE)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-orange?style=flat-square)](https://claude.ai)
 
-文件系统整理师 —— Claude Code skill。结构感知归位：学习项目已有目录结构，帮跑错地方的文件回到该去的子目录。支持干跑模式，独立使用或被 weaver-自我迭代 全局整理时调用。
+# file-tidy v2 — 文件整理师
+
+> 结构感知归位：学习项目已有目录结构，帮跑错地方的文件回到该去的子目录。
 
 ## v2 核心变化
 
@@ -13,19 +16,21 @@
 
 ## 安装
 
+本 Skill 属于 [weaver-evolve 技能集群](https://github.com/2021291696/weaver-evolve)：
+
 ```bash
-mkdir -p ~/.claude/skills/file-tidy
-cp SKILL.md ~/.claude/skills/file-tidy/
-cp -r references ~/.claude/skills/file-tidy/
+git clone https://github.com/2021291696/weaver-evolve.git
+cd weaver-evolve && bash install.sh
 ```
 
-## 触发词
+单独安装：
 
-`整理文件` / `整理目录` / `文件归类` / `tidy` / `cleanup`
+```bash
+git clone https://github.com/2021291696/file-tidy.git
+cp -r file-tidy/ ~/.claude/skills/file-tidy/
+```
 
 ## 使用
-
-### 独立使用
 
 ```
 整理文件                     # 干跑模式，展示计划
@@ -34,12 +39,10 @@ cp -r references ~/.claude/skills/file-tidy/
 整理文件 --classify          # 只移动高置信度，不执行删除
 ```
 
-### 项目配置
+项目配置见 [references/rules-schema.md](references/rules-schema.md)。
 
-在项目根目录创建 `.tidy-rules.yaml`（可选）。详见 [references/rules-schema.md](references/rules-schema.md)。
+## 被 weaver 调用
 
-### 被 weaver 调用
-
-[weaver-自我迭代](../weaver-自我迭代/) 在全局整理时会调用 file-tidy：
-1. 干跑扫描 → 输出四档计划 → 嵌入 weaver 摘要
+[weaver-自我迭代](../weaver-自我迭代/) 在全局整理时调用 file-tidy：
+1. 干跑扫描 → 四档计划 → 嵌入 weaver 摘要
 2. 用户确认 → weaver 调用 file-tidy 执行

@@ -2,3 +2,8 @@
 .last-weaver
 .DS_Store
 *.tmp
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+node_modules/
