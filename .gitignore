@@ -1,1 +1,4 @@
 .last-global-tidy
+.last-weaver
+.DS_Store
+*.tmp
