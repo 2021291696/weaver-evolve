@@ -82,3 +82,45 @@
 
 删了 `mysql-port.md` 但 MEMORY.md 里还留着链接。
 → 下次 agent 点过去 404。
+
+## 整理流程示例
+
+### 正例：去重合并（跨文件同信息）
+
+审计发现三个文件都记 MySQL 端口：
+- `mysql-port.md`：端口 3306
+- `dev-env.md`：MySQL 端口 3306
+- `reference-dev-credentials.md`：含端口 3306
+
+✅ 正确：
+1. 审计标注：`reference-dev-credentials.md` 最详细（含凭据+端口），其他两个重复
+2. 计划：删 `mysql-port.md`、`dev-env.md` 里移除端口行、`reference-dev-credentials.md` 保留
+3. 更新 MEMORY.md：移除 `mysql-port.md` 链接
+4. 验证：`grep -r "3306"` 只剩 `reference-dev-credentials.md` 一处
+
+❌ 错误：三个都保留，读者不知信哪个。
+
+### 正例：跨文件关联（同根因未互链）
+
+审计发现：
+- `pyinstaller-chinese-path.md`：PyInstaller 中文路径报错
+- `docling-gbk-reconfigure.md`：docling GBK 编码 reconfigure
+
+两者同根因（Windows GBK 编码），但未互链。
+
+✅ 正确：
+1. 审计标注：关键词"GBK/编码"共现，同根因
+2. 计划：双向加 `[[wikilink]]`
+3. 执行：`pyinstaller-chinese-path.md` 末尾加 `> 相关：[[docling-gbk-reconfigure]]`；反向同理
+4. 验证：`grep "[[pyinstaller-chinese-path]]" docling-gbk-reconfigure.md` 有匹配，反向亦然
+
+❌ 错误：合并成一个文件（两者是不同工具的踩坑，强行合并混淆主题）。
+
+### 反例：整理时擅自提取新信息
+
+整理过程中读到一条"用户说以后都用 uv 不用 pip"。
+
+❌ 错误：整理时把这条写成新 memory 文件。
+→ 整理是结构重构，不是提取新信息（那是 weaver 的事）。
+
+✅ 正确：整理只动已有文件结构，新信息留给下次"记住"指令或 weaver 扫对话。
