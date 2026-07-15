@@ -19,70 +19,44 @@ neat-freak 负责**单个项目内部**的知识卫生（项目 CLAUDE.md + docs
 
 ## 执行流程
 
-### 第零步：定位增量范围（双源）
+### 第零步：定位增量范围（本地 session JSONL）
 
 1. 读取时间戳文件 `~/.claude/.last-weaver`。格式：ISO 8601（如 `2026-05-17T14:30:00+08:00`）。
    不存在 → 首次运行，询问用户回溯范围（一周 / 一月 / 全部），等待选择后继续。
 
-2. **启动 agentmemory（尝试）：**
-   ```bash
-   curl -s --max-time 2 http://localhost:3111/health || \
-     timeout 10 bash ~/.claude/helpers/daemon-manager.sh start || true
-   ```
-   最终状态用 `curl -s http://localhost:3111/health` 确认：
-   - 200 → MCP 在线
-   - 其他 → 离线，进入降级模式
-
-3. **Source 1: agentmemory MCP（主源，需在线）：**
-   - 调用 `memory_sessions` 获取所有 session，按 `updatedAt`（毫秒时间戳）筛选
-   - `updatedAt` 为 null 时 fallback `startedAt`
-   - 筛选条件：`updatedAt > .last-weaver`
-   - 增量 sessions 按 `updatedAt` 降序排列
-
-4. **Source 2: history.jsonl（兜底源，始终可用）：**
-   - 读取 `~/.claude/history.jsonl`
+2. **读取 `~/.claude/history.jsonl`（索引）：**
    - 按 `timestamp` 字段筛选增量期内的行
+   - 提取字段：`sessionId`、`project`、`display`、`timestamp`
+   - 增量 sessions 按 `timestamp` 降序排列
    - 按 `project` 字段分组统计：每项目消息数 → 活跃项目排名
    - 提取高频 `display` 模式（重复出现的命令/skill 调用）
 
-5. **合并两源：**
-   - agentmemory 的 sessionId 标注 `[MCP]`，history.jsonl 的标注 `[本地]`
-   - **两者不强制合并**——各自独立进入第一步
-   - 更新 `~/.claude/.last-weaver`：MCP 在线时取最新的 `updatedAt`；降级模式时取 history.jsonl 中最新的 `timestamp`
+3. **定位完整转录文件：**
+   - 对每个增量 session，尝试读取 `~/.claude/projects/<project>/<sessionId>.jsonl`
+   - 文件不存在 → 跳过该 session，在摘要末尾列出"跳过文件清单"
+   - 文件存在 → 进入第一步处理
 
-6. **降级模式（agentmemory 离线时）：**
-   - 跳过 Source 1，仅使用 Source 2
-   - 第一步中跳过需要完整转录的操作（经验模式识别、趋势追踪、权限弹窗扫描）
-   - 在第五步摘要首行标注：`⚠️ agentmemory 离线，仅基于命令历史（history.jsonl）。启动 daemon 后重新整理可获得完整分析。`
+4. **更新 `.last-weaver`：**
+   - 取 history.jsonl 中最新 session 的 `timestamp`
 
-7. **增量为空：** 报告"自上次整理以来没有新对话，无需整理。" 并退出。
+5. **增量为空：** 报告"自上次整理以来没有新对话，无需整理。" 并退出。
 
 ### 第一步：扫描增量 Sessions，提取信息
 
-**数据源判断：**
+对每个增量 session 的 `~/.claude/projects/<project>/<sessionId>.jsonl`：
 
-| agentmemory 状态 | 可执行操作 | 跳过的操作 |
-|-----------------|-----------|-----------|
-| 在线 | 完整转录提取 + 经验模式 + 趋势 + 权限 | 无 |
-| 离线 | 活跃项目发现 + 过期内容扫描 + 配置审查 | 经验模式识别、趋势追踪、权限弹窗扫描 |
+1. **逐行解析 JSONL**，每行是一个事件对象。
+2. **关注 `type` 字段：**
+   - `type: "user"` → 用户输入（`message.content`）
+   - `type: "assistant"` → AI 回复（`message.content`）
+   - `type: "tool_result"` / `type: "tool_use"` → 工具交互（可选，用于权限弹窗扫描）
+   - 其他类型（`mode`、`attachment`、`file-history-snapshot` 等）→ 跳过
+3. **用六类标记分类信息**（全局偏好 / 工具选择 / 跨项目原则 / 项目决策 / 踩坑记录 / 推翻过期）。
+4. **标注来源** `[sessionId]`。
 
-**在线模式：**
-对每个来自 MCP 的增量 session：
-1. 调用 `memory_recall(sessionId)` 获取完整对话转录
-2. 用六类标记分类信息（全局偏好 / 工具选择 / 跨项目原则 / 项目决策 / 踩坑记录 / 推翻过期）
-3. 标注来源 `[MCP: sessionId]`
-4. 经验模式识别、趋势追踪、权限弹窗扫描（逻辑不变，输入换为 MCP 返回的转录文本）
+来自 `history.jsonl` 的增量数据同步处理：提取活跃项目列表和高频命令模式作为补充信号。
 
-来自 history.jsonl 的增量数据同步处理：提取活跃项目列表和高频命令模式作为补充信号（标注 `[本地]`）。
-
-**离线模式：**
-1. 从 history.jsonl 的 project 分组中提取活跃项目列表
-2. 高频命令模式作为低置信度信号（标注 `[本地] [置信度: 低]`）
-3. 过期内容扫描和配置审查照常执行
-
-**以下内容同时适用于两种模式（经验模式识别和趋势追踪仅在线模式可用）：**
-
-（以下各项中，经验模式识别和趋势追踪仅在 MCP 在线时执行，离线模式跳过。）
+**以下内容适用于所有 sessions：**
 
 1. **通读完整对话**，用以下分类标记值得保留的信息：
 
@@ -321,7 +295,7 @@ neat-freak 负责**单个项目内部**的知识卫生（项目 CLAUDE.md + docs
 - [ ] "建议删除"项已展示给用户确认
 - [ ] 文件系统整理已完成（调用了 file-tidy，结果在摘要中展示）
 - [ ] 错误复盘已完成（调用了 debug-architect，结果在摘要中展示）
-- [ ] agentmemory 可用性已检测并在摘要中标注数据源
+- [ ] 本地 session JSONL 文件可读取，跳过的文件已在摘要列出
 
 **质量：**
 - [ ] 无相对时间（`grep -E "今天|昨天|最近|刚刚|上周"` 在所有改动的文件中清零）
@@ -353,7 +327,7 @@ neat-freak 负责**单个项目内部**的知识卫生（项目 CLAUDE.md + docs
 
 ```
 ## 全局整理完成（2026-05-17）
-数据源: agentmemory MCP + history.jsonl
+数据源: 本地 session JSONL（`~/.claude/projects/<project>/<sessionId>.jsonl`）+ `history.jsonl` 索引
 
 ### 全局层
 - 新增：~/.claude/CLAUDE.md — "所有 Maven 项目用阿里云镜像"
@@ -407,11 +381,6 @@ neat-freak 负责**单个项目内部**的知识卫生（项目 CLAUDE.md + docs
 ### 需用户确认
 - 发现全局 settings.json 中 ANTHROPIC_MODEL 值在两个项目中不一致，当前分别设为 X 和 Y，以哪个为准？
 ```
-
-**降级模式摘要规则：**
-- 首行加 `⚠️ agentmemory 离线，仅基于命令历史（history.jsonl）`
-- 省略"经验发现"、"趋势追踪"、"记忆画像更新"段落
-- 其他段落正常输出，事实标注 `[数据源: history.jsonl]`，置信度标注 `[低]`
 
 只列有实际变更的项。没动的不写。不出现在摘要中的段落直接省略（比如没有经验发现就不输出"经验发现"段落）。遇到无法自动判断的矛盾或过期内容，列在"需用户确认"。扫描到的可删内容列在"建议删除"。
 - 推测标注 `[推测]`，与事实区分
