@@ -33,7 +33,7 @@ $Installed = 0
 $Skipped = 0
 foreach ($skill in $Skills) {
   $target = Join-Path $SkillsDir $skill
-  $source = Join-Path $ScriptDir $skill
+  $source = Join-Path (Join-Path $ScriptDir "skills") $skill
   if ((Test-Path $target) -and (-not $Force)) {
     Write-Host "⚠ $skill already exists, use -Force to overwrite"
     $Skipped++

@@ -24,11 +24,11 @@
 
 | Skill | 角色 | 做什么 |
 |-------|------|--------|
-| 🧠 [`weaver-自我迭代`](./weaver-自我迭代/) | 主 | 全局知识整理：分层归位、配置审查、经验识别、自我进化 |
-| 📂 [`file-tidy`](./file-tidy/) | 子 | 文件系统整理：结构感知归位，不按扩展名瞎归 |
-| 💾 [`memory-keeper`](./memory-keeper/) | 子 | 即时记忆管理："记住" / "忘掉" 指令 |
-| 🔬 [`debug-architect`](./debug-architect/) | 子 | 错误复盘：扫描 → 根因 → 预防规则 |
-| 🎯 [`skill-optimizer`](./skill-optimizer/) | 兄弟 | Skill 级优化：识别改进空间 |
+| 🧠 [`weaver-自我迭代`](./skills/weaver-自我迭代/) | 主 | 全局知识整理：分层归位、配置审查、经验识别、自我进化 |
+| 📂 [`file-tidy`](./skills/file-tidy/) | 子 | 文件系统整理：结构感知归位，不按扩展名瞎归 |
+| 💾 [`memory-keeper`](./skills/memory-keeper/) | 子 | 即时记忆管理："记住" / "忘掉" 指令 |
+| 🔬 [`debug-architect`](./skills/debug-architect/) | 子 | 错误复盘：扫描 → 根因 → 预防规则 |
+| 🎯 [`skill-optimizer`](./skills/skill-optimizer/) | 兄弟 | Skill 级优化：识别改进空间 |
 
 ## ⚡ 快速安装
 
@@ -89,11 +89,11 @@ MIT
 
 | Skill | Role | Purpose |
 |-------|------|---------|
-| 🧠 [`weaver-自我迭代`](./weaver-自我迭代/) | Core | Cross-project knowledge routing, config audit, pattern recognition, self-evolution |
-| 📂 [`file-tidy`](./file-tidy/) | Sub | Structure-aware file organization — no extension-based guessing |
-| 💾 [`memory-keeper`](./memory-keeper/) | Sub | Real-time "remember" / "forget" command handling with merge-first philosophy |
-| 🔬 [`debug-architect`](./debug-architect/) | Sub | Post-project error analysis: scan → root cause → prevention rules |
-| 🎯 [`skill-optimizer`](./skill-optimizer/) | Sibling | Context-aware skill improvement with confidence scoring |
+| 🧠 [`weaver-自我迭代`](./skills/weaver-自我迭代/) | Core | Cross-project knowledge routing, config audit, pattern recognition, self-evolution |
+| 📂 [`file-tidy`](./skills/file-tidy/) | Sub | Structure-aware file organization — no extension-based guessing |
+| 💾 [`memory-keeper`](./skills/memory-keeper/) | Sub | Real-time "remember" / "forget" command handling with merge-first philosophy |
+| 🔬 [`debug-architect`](./skills/debug-architect/) | Sub | Post-project error analysis: scan → root cause → prevention rules |
+| 🎯 [`skill-optimizer`](./skills/skill-optimizer/) | Sibling | Context-aware skill improvement with confidence scoring |
 
 ### ⚡ Quick Install
 

@@ -40,7 +40,7 @@ INSTALLED=0
 SKIPPED=0
 for skill in "${SKILLS[@]}"; do
   target="$SKILLS_DIR/$skill"
-  source="$SCRIPT_DIR/$skill"
+  source="$SCRIPT_DIR/skills/$skill"
   if [ -e "$target" ] && ! $FORCE; then
     echo "⚠ $skill already exists, use --force to overwrite"
     SKIPPED=$((SKIPPED + 1))
